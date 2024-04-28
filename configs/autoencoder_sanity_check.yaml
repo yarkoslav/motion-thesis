@@ -1,0 +1,55 @@
+model:
+  base_learning_rate: 4.5e-6
+  target: models.autoencoder.AutoencoderKL
+  params:
+    mode: image
+    monitor: "val/rec_loss"
+    embed_dim: 4
+    lossconfig:
+      target: modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 0.000001
+        disc_weight: 0.5
+
+    ddconfig:
+      double_z: True
+      z_channels: 4
+      resolution: 256
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]  # num_down = len(ch_mult)-1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
+      in_channels: 3
+      out_ch: 3
+
+data:
+  target: scripts.train.DataModuleFromConfig
+  params:
+    batch_size: 1
+    train:
+      target: data.single_image.SingleImageTrainDataset
+      params:
+        file_path: einstein.jpg
+        size: 256
+    validation:
+      target: data.single_image.SingleImageValDataset
+      params:
+        file_path: einstein.jpg
+        size: 256
+
+lightning:
+  callbacks:
+    image_logger:
+      target: scripts.train.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    accumulate_grad_batches: 2
+    max_epochs: 1000
+    check_val_every_n_epoch: 100
+    gpus: 0,

@@ -1,0 +1,78 @@
+model:
+  base_learning_rate: 4.5e-6
+  target: models.autoencoder.AutoencoderKL
+  params:
+    mode: flow
+    use_flow_encoding: false
+    trigonometric_loss: false
+    monitor: "val/rec_loss"
+    embed_dim: 4
+    lossconfig:
+      target: modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 0.000001
+        disc_weight: 0.25
+        disc_in_channels: 2
+        perceptual_weight: 0.0
+
+    ddconfig:
+      double_z: True
+      z_channels: 4
+      resolution: 256
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]  # num_down = len(ch_mult)-1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
+      in_channels: 2
+      out_ch: 2
+      upsample_mode: bilinear
+
+data:
+  target: scripts.train_vae.DataModuleFromConfig
+  params:
+    batch_size: 4
+    train:
+      target: data.video_dataset.WebVidTrain
+      params:
+        video_params:
+          input_res: 256
+          max_offset: 120
+          sampling_mode: uniform
+        data_dir: /mnt/data/yaroslav/webvid/data
+#        metadata_path: /mnt/data/yaroslav/webvid/results_01M_train.csv
+        metadata_path: /home/engineer/Dev/yaroslav/motion-thesis/flow_labeled.csv
+#        data_dir: /datasets1/romanus/webvid/data
+#        metadata_path: /datasets1/romanus/webvid/results_01M_train.csv
+#        data_dir: /datasets/ubuntu-system/romanus/webvid/data
+#        metadata_path: /datasets/ubuntu-system/romanus/webvid/results_01M_train.csv
+        subsample: 1
+        use_optical_flow_score: True
+    validation:
+      target: data.video_dataset.WebVidVal
+      params:
+        video_params:
+          input_res: 256
+        data_dir: /mnt/data/yaroslav/webvid/data
+        metadata_path: /mnt/data/yaroslav/webvid/results_2M_val.csv
+#        data_dir: /datasets1/romanus/webvid/data
+#        metadata_path: /datasets1/romanus/webvid/results_2M_val.csv
+#        data_dir: /datasets/ubuntu-system/romanus/webvid/data
+#        metadata_path: /datasets/ubuntu-system/romanus/webvid/results_2M_val.csv
+        num_val_videos: 1000
+
+lightning:
+  callbacks:
+    image_logger:
+      target: scripts.train_vae.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    accumulate_grad_batches: 2
+    max_epochs: 1000
+    check_val_every_n_epoch: 1
+    gpus: 0,

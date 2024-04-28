@@ -1,0 +1,60 @@
+model:
+  base_learning_rate: 1e-5
+  target: models.lwm.LWM
+  params:
+    image_config: configs/autoencoder.yaml
+#    image_ckpt: /datasets1/romanus/thesis_checkpoints/image_vae.ckpt
+    image_ckpt: /mnt/data/yaroslav/thesis_checkpoints/image_vae.ckpt
+    flow_config: configs/autoencoder_flow.yaml
+#    flow_ckpt: /datasets1/romanus/thesis_checkpoints/bilinear_flow_train.ckpt
+    flow_ckpt: /mnt/data/yaroslav/thesis_checkpoints/bilinear_flow_train.ckpt
+    monitor: "val/recon_loss"
+    mode: warp
+    lfm_config:
+      temp_dim: 512
+      num_flows: 4
+
+data:
+  target: scripts.train_lwm.DataModuleFromConfig
+  params:
+    batch_size: 4
+    train:
+      target: data.video_dataset.WebVidTrain
+      params:
+        video_params:
+          input_res: 256
+          max_offset: 120
+          sampling_mode: uniform
+        data_dir: /mnt/data/yaroslav/webvid/data
+        metadata_path: /mnt/data/yaroslav/webvid/results_01M_train.csv
+#        data_dir: /datasets1/romanus/webvid/data
+#        metadata_path: /datasets1/romanus/webvid/results_01M_train.csv
+#        data_dir: /datasets/ubuntu-system/romanus/webvid/data
+#        metadata_path: /datasets/ubuntu-system/romanus/webvid/results_01M_train.csv
+        subsample: 1
+    validation:
+      target: data.video_dataset.WebVidVal
+      params:
+        video_params:
+          input_res: 256
+        data_dir: /mnt/data/yaroslav/webvid/data
+        metadata_path: /mnt/data/yaroslav/webvid/results_2M_val.csv
+#        data_dir: /datasets1/romanus/webvid/data
+#        metadata_path: /datasets1/romanus/webvid/results_2M_val.csv
+#        data_dir: /datasets/ubuntu-system/romanus/webvid/data
+#        metadata_path: /datasets/ubuntu-system/romanus/webvid/results_2M_val.csv
+        num_val_videos: 1000
+
+lightning:
+  callbacks:
+    image_logger:
+      target: scripts.train_lwm.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    max_epochs: 1000
+    check_val_every_n_epoch: 1
+    gpus: 0,

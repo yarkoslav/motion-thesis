@@ -1,0 +1,61 @@
+model:
+  base_learning_rate: 4.5e-6
+  target: models.autoencoder.AutoencoderKL
+  params:
+    mode: flow
+#    use_flow_encoding: true
+#    trigonometric_loss: true
+    monitor: "val/rec_loss"
+    embed_dim: 4
+    lossconfig:
+      target: modules.losses.LPIPSWithDiscriminator
+      params:
+        disc_start: 50001
+        kl_weight: 0.000001
+        disc_weight: 0.25
+        disc_in_channels: 2
+        perceptual_weight: 0.0
+
+    ddconfig:
+      double_z: True
+      z_channels: 4
+      resolution: 256
+      ch: 128
+      ch_mult: [ 1,2,4,4 ]  # num_down = len(ch_mult)-1
+      num_res_blocks: 2
+      attn_resolutions: [ ]
+      dropout: 0.0
+      in_channels: 2
+      out_ch: 2
+
+data:
+  target: scripts.train_vae.DataModuleFromConfig
+  params:
+    batch_size: 1
+    train:
+      target: data.double_image.DoubleImageTrainDataset
+      params:
+        file_path1: FlowFormerPlusPlus/demo-frames/000016.png
+        file_path2: FlowFormerPlusPlus/demo-frames/000017.png
+        size: 256
+    validation:
+      target: data.double_image.DoubleImageValDataset
+      params:
+        file_path1: FlowFormerPlusPlus/demo-frames/000016.png
+        file_path2: FlowFormerPlusPlus/demo-frames/000017.png
+        size: 256
+
+lightning:
+  callbacks:
+    image_logger:
+      target: scripts.train_vae.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    accumulate_grad_batches: 2
+    max_epochs: 1000
+    check_val_every_n_epoch: 100
+    gpus: 0,

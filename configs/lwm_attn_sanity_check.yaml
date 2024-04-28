@@ -1,0 +1,56 @@
+model:
+  base_learning_rate: 1e-4
+  target: models.lwm.LWM
+  params:
+    image_config: configs/autoencoder.yaml
+    image_ckpt: /datasets/ubuntu-system/romanus/thesis_checkpoints/image_vae.ckpt
+#    image_ckpt: /mnt/data/yaroslav/thesis_checkpoints/image_vae.ckpt
+    flow_config: configs/autoencoder_flow.yaml
+    flow_ckpt: /datasets/ubuntu-system/romanus/thesis_checkpoints/bilinear_flow_train.ckpt
+#    flow_ckpt: /mnt/data/yaroslav/thesis_checkpoints/bilinear_flow_train.ckpt
+    monitor: "val/recon_loss"
+    mode: attn
+    lfm_config:
+      warp_attn_params:
+        attn_params:
+          d_model: 512
+          d_in:
+            Q: 8
+            K: 8
+            V: 4
+          d_out: 4
+          num_head: 8
+        hidden_dim: 512
+      num_att_blocks: 8
+      latent_dim: 4
+
+data:
+  target: scripts.train_vae.DataModuleFromConfig
+  params:
+    batch_size: 1
+    train:
+      target: data.double_image.DoubleImageTrainDataset
+      params:
+        file_path1: FlowFormerPlusPlus/demo-frames/000016.png
+        file_path2: FlowFormerPlusPlus/demo-frames/000025.png
+        size: 256
+    validation:
+      target: data.double_image.DoubleImageValDataset
+      params:
+        file_path1: FlowFormerPlusPlus/demo-frames/000016.png
+        file_path2: FlowFormerPlusPlus/demo-frames/000025.png
+        size: 256
+
+lightning:
+  callbacks:
+    image_logger:
+      target: scripts.train_lwm.ImageLogger
+      params:
+        batch_frequency: 1000
+        max_images: 8
+        increase_log_steps: True
+
+  trainer:
+    max_epochs: 1000
+    check_val_every_n_epoch: 100
+    gpus: 0,
